@@ -1,0 +1,36 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.utils_backup
+pom.xml.v3
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# IDE - VS Code
+.vscode/
+.history/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Burp Suite
+burp.debug.log
+*.log
