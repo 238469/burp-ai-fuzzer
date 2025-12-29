@@ -1,5 +1,7 @@
 # Burp AI Fuzzer
 
+![Main UI](images/main_ui.png)
+
 一个基于 AI 驱动的 Burp Suite 渗透测试辅助插件，旨在利用大语言模型（LLM）的上下文理解能力，为复杂的 HTTP 请求自动生成针对性的 Fuzz 字典。
 
 ## 🌟 核心特性
@@ -25,12 +27,13 @@ mvn clean package
 3. 选择 `Java` 类型，并加载上述编译好的 JAR 文件。
 
 ### 3. 配置 AI
+
 1. 切换到 `AI Fuzzer` 标签页。
 2. 填写你的 API Key、Base URL（如 `https://api.openai.com/v1`）以及模型名称。
 3. 点击 `保存配置` 并点击 `测试连接` 确保 API 正常。
 
 ## 🛠 使用说明
-
+![Config](images/config.png)
 1. **同步请求**：在 Burp 的 Proxy 或 Repeater 历史记录中，右键点击请求，选择 `Send to AI Fuzzer`。
 2. **标记位置**（可选）：在插件编辑框中，使用 `§` 包裹你想测试的参数值，例如 `id=§1001§`。
 3. **生成字典**：点击 `生成 AI 字典`，稍等片刻即可看到针对性生成的 Payload 列表。
