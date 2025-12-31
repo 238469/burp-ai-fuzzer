@@ -3,6 +3,8 @@ package com.aifuzzer.ui;
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.persistence.Preferences;
 import com.aifuzzer.ai.AiClient;
+import com.aifuzzer.model.PromptTemplate;
+import com.aifuzzer.storage.TemplateStorage;
 
 import burp.api.montoya.http.message.requests.HttpRequest;
 import com.aifuzzer.ai.AiClient;
@@ -10,6 +12,7 @@ import com.aifuzzer.ai.AiClient;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,11 +23,12 @@ public class MainPanel extends JPanel {
     private final MontoyaApi api;
     private final Preferences preferences;
     private final AiClient aiClient;
+    private final TemplateStorage templateStorage;
 
     private JTextField apiKeyField;
     private JTextField baseUrlField;
     private JComboBox<String> modelSelector;
-    private JSpinner threadSpinner;
+    private JComboBox<PromptTemplate> templateSelector;
     private JTextArea promptArea;
     private JTextArea resultArea;
     private JTextArea requestEditor;
@@ -37,19 +41,12 @@ public class MainPanel extends JPanel {
     private static final String PREF_API_KEY = "ai_fuzzer_api_key";
     private static final String PREF_BASE_URL = "ai_fuzzer_base_url";
     private static final String PREF_MODEL = "ai_fuzzer_model";
-    private static final String PREF_THREADS = "ai_fuzzer_threads";
-    private static final String PREF_PROMPT = "ai_fuzzer_prompt";
-
-    private static final String DEFAULT_PROMPT = "你是一个专业的渗透测试专家。根据以下 HTTP 请求的上下文，生成 20 个用于 Fuzz 测试该接口参数的恶意或异常 Payload。\n\n" +
-            "特别指令：\n" +
-            "1. 如果请求中存在 '§' 符号（例如：param=§value§），说明这是用户指定的测试位置。请根据该位置的参数名、当前值和上下文环境，生成最可能导致安全漏洞（如注入、绕过、逻辑错误等）的针对性 Payload。\n" +
-            "2. 仅输出 Payload 列表，每行一个。\n" +
-            "3. 严禁输出任何解释性文字、代码块标记或序号。";
 
     public MainPanel(MontoyaApi api) {
         this.api = api;
         this.preferences = api.persistence().preferences();
         this.aiClient = new AiClient(api);
+        this.templateStorage = new TemplateStorage();
         
         setLayout(new BorderLayout());
         setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -179,12 +176,40 @@ public class MainPanel extends JPanel {
         modelSelector.setEditable(true);
         panel.add(modelSelector, gbc);
 
-        // Threads
+        // Template Selector
         gbc.gridx = 0; gbc.gridy = 3; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
-        panel.add(new JLabel("并发线程数:"), gbc);
+        panel.add(new JLabel("提示词模板:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
-        threadSpinner = new JSpinner(new SpinnerNumberModel(5, 1, 50, 1));
-        panel.add(threadSpinner, gbc);
+        
+        JPanel templateRow = new JPanel(new BorderLayout(5, 0));
+        templateSelector = new JComboBox<>();
+        refreshTemplates();
+        templateSelector.addActionListener(e -> {
+            PromptTemplate selected = (PromptTemplate) templateSelector.getSelectedItem();
+            if (selected != null) {
+                promptArea.setText(selected.getContent());
+            }
+        });
+        templateRow.add(templateSelector, BorderLayout.CENTER);
+        
+        JPanel templateButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
+        JButton addBtn = new JButton("+");
+        addBtn.setToolTipText("新增模板");
+        addBtn.addActionListener(e -> addNewTemplate());
+        
+        JButton deleteBtn = new JButton("-");
+        deleteBtn.setToolTipText("删除模板");
+        deleteBtn.addActionListener(e -> deleteSelectedTemplate());
+
+        JButton saveTplBtn = new JButton("保存当前模版");
+        saveTplBtn.addActionListener(e -> saveCurrentTemplate());
+        
+        templateButtons.add(addBtn);
+        templateButtons.add(deleteBtn);
+        templateButtons.add(saveTplBtn);
+        templateRow.add(templateButtons, BorderLayout.EAST);
+        
+        panel.add(templateRow, gbc);
 
         // Custom Prompt
         gbc.gridx = 0; gbc.gridy = 4; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
@@ -193,7 +218,9 @@ public class MainPanel extends JPanel {
         promptArea = new JTextArea(5, 30);
         promptArea.setLineWrap(true);
         promptArea.setWrapStyleWord(true);
-        promptArea.setText(DEFAULT_PROMPT);
+        if (templateSelector.getItemCount() > 0) {
+            promptArea.setText(((PromptTemplate)templateSelector.getItemAt(0)).getContent());
+        }
         panel.add(new JScrollPane(promptArea), gbc);
 
         // Save Button
@@ -204,13 +231,85 @@ public class MainPanel extends JPanel {
         testButton.addActionListener(e -> testConnection());
         buttonPanel.add(testButton);
 
-        JButton saveButton = new JButton("保存配置");
+        JButton saveButton = new JButton("保存 API 配置");
         saveButton.addActionListener(e -> saveConfig());
         buttonPanel.add(saveButton);
         
         panel.add(buttonPanel, gbc);
 
         return panel;
+    }
+
+    private void refreshTemplates() {
+        PromptTemplate currentlySelected = (PromptTemplate) templateSelector.getSelectedItem();
+        templateSelector.removeAllItems();
+        List<PromptTemplate> templates = templateStorage.loadTemplates();
+        for (PromptTemplate t : templates) {
+            templateSelector.addItem(t);
+        }
+        if (currentlySelected != null) {
+            for (int i = 0; i < templateSelector.getItemCount(); i++) {
+                if (templateSelector.getItemAt(i).getName().equals(currentlySelected.getName())) {
+                    templateSelector.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void addNewTemplate() {
+        String name = JOptionPane.showInputDialog(this, "请输入新模板名称:", "新增模板", JOptionPane.PLAIN_MESSAGE);
+        if (name != null && !name.trim().isEmpty()) {
+            PromptTemplate newTpl = new PromptTemplate(name.trim(), "");
+            List<PromptTemplate> templates = templateStorage.loadTemplates();
+            templates.add(newTpl);
+            try {
+                templateStorage.saveTemplates(templates);
+                refreshTemplates();
+                templateSelector.setSelectedItem(newTpl);
+            } catch (IOException e) {
+                api.logging().logToError("保存模板失败: " + e.getMessage());
+            }
+        }
+    }
+
+    private void deleteSelectedTemplate() {
+        PromptTemplate selected = (PromptTemplate) templateSelector.getSelectedItem();
+        if (selected == null) return;
+        
+        int confirm = JOptionPane.showConfirmDialog(this, "确定要删除模板 '" + selected.getName() + "' 吗？", "确认删除", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            List<PromptTemplate> templates = templateStorage.loadTemplates();
+            templates.removeIf(t -> t.getName().equals(selected.getName()));
+            try {
+                templateStorage.saveTemplates(templates);
+                refreshTemplates();
+            } catch (IOException e) {
+                api.logging().logToError("删除模板失败: " + e.getMessage());
+            }
+        }
+    }
+
+    private void saveCurrentTemplate() {
+        PromptTemplate selected = (PromptTemplate) templateSelector.getSelectedItem();
+        if (selected == null) return;
+
+        selected.setContent(promptArea.getText());
+        List<PromptTemplate> templates = templateStorage.loadTemplates();
+        for (PromptTemplate t : templates) {
+            if (t.getName().equals(selected.getName())) {
+                t.setContent(selected.getContent());
+                break;
+            }
+        }
+        
+        try {
+            templateStorage.saveTemplates(templates);
+            JOptionPane.showMessageDialog(this, "模板 '" + selected.getName() + "' 已保存", "成功", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException e) {
+            api.logging().logToError("保存模板失败: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "保存失败: " + e.getMessage(), "错误", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void testConnection() {
@@ -332,28 +431,18 @@ public class MainPanel extends JPanel {
         preferences.setString(PREF_API_KEY, apiKeyField.getText().trim());
         preferences.setString(PREF_BASE_URL, baseUrlField.getText().trim());
         preferences.setString(PREF_MODEL, (String) modelSelector.getSelectedItem());
-        preferences.setString(PREF_THREADS, threadSpinner.getValue().toString());
-        preferences.setString(PREF_PROMPT, promptArea.getText().trim());
         
-        api.logging().logToOutput("配置已成功保存到 Burp 全局设置。");
-        JOptionPane.showMessageDialog(this, "配置已保存", "成功", JOptionPane.INFORMATION_MESSAGE);
+        api.logging().logToOutput("API 配置已保存。");
+        JOptionPane.showMessageDialog(this, "API 配置已保存", "成功", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void loadConfig() {
         String apiKey = preferences.getString(PREF_API_KEY);
         String baseUrl = preferences.getString(PREF_BASE_URL);
         String model = preferences.getString(PREF_MODEL);
-        String threads = preferences.getString(PREF_THREADS);
-        String prompt = preferences.getString(PREF_PROMPT);
 
         if (apiKey != null) apiKeyField.setText(apiKey);
         if (baseUrl != null) baseUrlField.setText(baseUrl);
         if (model != null) modelSelector.setSelectedItem(model);
-        if (threads != null) {
-            try {
-                threadSpinner.setValue(Integer.parseInt(threads));
-            } catch (NumberFormatException ignored) {}
-        }
-        if (prompt != null) promptArea.setText(prompt);
     }
 }

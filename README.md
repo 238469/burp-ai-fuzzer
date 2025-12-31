@@ -6,11 +6,10 @@
 
 ## 🌟 核心特性
 
-- **AI 智能生成**：根据 HTTP 请求的上下文（参数名、值、接口逻辑）自动生成恶意或异常 Payload。
-- **§ 标记支持**：支持像 Intruder 一样使用 `§` 符号手动标记需要 Fuzz 的位置，AI 将针对该位置进行深度优化。
-- **Intruder 深度集成**：一键将带标记的请求发送至 Burp Intruder，并支持在 Intruder 中直接引用 AI 生成的字典。
-- **多模型支持**：支持 OpenAI (GPT-4/GPT-3.5) 和 Anthropic (Claude 3) 等兼容 API 格式的模型。
-- **配置持久化**：所有 API 配置（Key, Base URL, Prompt 等）均自动保存至 Burp 的全局设置。
+- **智能字典生成**：支持 OpenAI (GPT-3.5/4) 和 Claude (Opus/Sonnet) 等主流模型，自动解析请求上下文生成高质量 Fuzz 字典。
+- **多模板管理**：内置通用、SQL 注入、XSS 等提示词模板，支持用户自定义新增、编辑和删除模板，模板数据持久化在本地 JSON 文件中。
+- **Intruder 深度集成**：支持通过 `§` 标记 Fuzz 位置，一键发送至 Intruder，并作为 Intruder 的自定义 Payload 数据源。
+- **配置持久化**：API 配置自动保存至 Burp 全局设置，模板数据独立存储，方便迁移和备份。
 
 ## 🚀 快速开始
 

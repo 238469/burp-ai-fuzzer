@@ -31,3 +31,8 @@
     - [x] 实现“发送至 Intruder”功能，自动保留 § 标记
     - [x] 注册自定义 Payload Generator (`AI Fuzzer Generated`)
     - [x] 支持在 Intruder 中直接引用插件生成的 AI 字典
+- [x] 阶段 8：提示词模板管理 (已完成)
+    - [x] 实现 `PromptTemplate` 数据模型
+    - [x] 实现 `TemplateStorage` 本地 JSON 持久化（独立于 Burp 设置）
+    - [x] 在 UI 中添加模板切换、新增、删除和实时保存功能
+    - [x] 清理代码，移除冗余的线程配置逻辑
