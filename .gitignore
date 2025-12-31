@@ -26,7 +26,7 @@ out/
 # IDE - VS Code
 .vscode/
 .history/
-.memory-bank/
+
 # OS
 Thumbs.db
 .DS_Store
@@ -34,3 +34,6 @@ Thumbs.db
 # Burp Suite
 burp.debug.log
 *.log
+
+# Project Docs (Internal)
+memory-bank/
