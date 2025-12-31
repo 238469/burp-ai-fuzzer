@@ -32,6 +32,7 @@ public class MainPanel extends JPanel {
     private JTextArea promptArea;
     private JTextArea resultArea;
     private JTextArea requestEditor;
+    private JPopupMenu editorContextMenu;
     private JButton genDictButton;
     private JButton sendToIntruderBtn;
     private JLabel statusLabel;
@@ -343,6 +344,15 @@ public class MainPanel extends JPanel {
         requestPanel.setBorder(BorderFactory.createTitledBorder("HTTP 请求 (使用 §标记 Fuzz 位置§)"));
         requestEditor = new JTextArea();
         requestEditor.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        
+        // 创建编辑器右键菜单
+        editorContextMenu = new JPopupMenu();
+        JMenuItem markItem = new JMenuItem("标记为 Fuzz 位置 (§)");
+        markItem.addActionListener(e -> markSelectionAsFuzz());
+        editorContextMenu.add(markItem);
+        
+        requestEditor.setComponentPopupMenu(editorContextMenu);
+        
         requestPanel.add(new JScrollPane(requestEditor), BorderLayout.CENTER);
         panel.add(requestPanel);
 
@@ -365,6 +375,20 @@ public class MainPanel extends JPanel {
         panel.add(dictPanel);
         
         return panel;
+    }
+
+    private void markSelectionAsFuzz() {
+        String selectedText = requestEditor.getSelectedText();
+        if (selectedText != null && !selectedText.isEmpty()) {
+            int start = requestEditor.getSelectionStart();
+            int end = requestEditor.getSelectionEnd();
+            requestEditor.replaceRange("§" + selectedText + "§", start, end);
+        } else {
+            // 如果没有选择文本，就在光标处插入两个 §
+            int pos = requestEditor.getCaretPosition();
+            requestEditor.insert("§§", pos);
+            requestEditor.setCaretPosition(pos + 1);
+        }
     }
 
     public void updatePayloads(java.util.List<String> payloads) {

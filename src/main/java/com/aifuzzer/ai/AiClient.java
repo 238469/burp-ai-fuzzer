@@ -30,7 +30,13 @@ public class AiClient {
      * 根据请求上下文生成 Fuzz Payload 列表
      */
     public void generatePayloads(String apiKey, String baseUrl, String model, String customPrompt, String context, PayloadCallback callback) {
-        String prompt = customPrompt + "\n\n接口上下文：\n" + context;
+        // 构建带有强制约束的完整 Prompt
+        String systemConstraints = "\n\n### 强制执行规则 ###\n" +
+                "1. 如果请求中存在 '§' 符号（例如：param=§value§），说明这是用户指定的测试位置。请根据该位置的参数名、当前值和上下文环境，生成Payload。\n" +
+                "2. 仅输出 Payload 列表，每行一个。\n" +
+                "3. 严禁输出任何解释性文字、代码块标记或序号。";
+
+        String prompt = customPrompt + systemConstraints + "\n\n### 待分析的 HTTP 接口上下文 ###\n" + context;
 
         // 根据模型名称决定调用逻辑
         if (model.toLowerCase().contains("claude")) {
