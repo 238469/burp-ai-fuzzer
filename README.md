@@ -50,6 +50,5 @@ mvn clean package
 ![Intruder Integration](images/爆破.png)
 3. 在 Intruder 的 `Payloads` 选项卡中，确保 `Payload type` 为 `Extension-generated`，并选择 `AI Fuzzer Generated`。
 
-## 📝 许可证
+![38c1ee07f2b252a4051aafefa673ddf0](https://github.com/user-attachments/assets/7348fece-21ca-474d-b94b-a46fdcefaa16)
 
-[MIT License](LICENSE)
